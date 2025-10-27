@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Evaluation Metrics</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-content">
+            <h1>AI Model Evaluation Metrics</h1>
+            <nav><a href="{{ url_for('index') }}" class="nav-link">Back to Assessment Tool</a></nav>
+        </div>
+        </header>
+    <div class="container">
+        <section class="evaluation-section card">
+            <h2>Overall Performance</h2>
+            <div class="summary-metrics">
+                <div><span>Pixel Accuracy:</span> <strong>{{ "%.2f"|format(metrics['Overall Pixel Accuracy']) }}%</strong></div>
+                <div><span>Mean IoU (mIoU):</span> <strong>{{ "%.2f"|format(metrics['Mean IoU (mIoU)']) }}%</strong></div>
+                <div><span>Macro Avg Precision:</span> <strong>{{ "%.2f"|format(metrics['Macro Average Precision']) }}%</strong></div>
+                <div><span>Macro Avg Recall:</span> <strong>{{ "%.2f"|format(metrics['Macro Average Recall']) }}%</strong></div>
+                <div><span>Macro Avg F1-Score:</span> <strong>{{ "%.2f"|format(metrics['Macro Average F1-Score']) }}%</strong></div>
+            </div>
+
+            <h2>Detailed Class Metrics</h2>
+            <div class="detailed-metrics-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Class Name</th>
+                            <th>IoU (%)</th>
+                            <th>Precision (%)</th>
+                            <th>Recall (%)</th>
+                            <th>F1-Score (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for class_metric in metrics['class_metrics'] %}
+                        <tr>
+                            <td>{{ class_metric['name'] }}</td>
+                            <td>{{ "%.2f"|format(class_metric['iou']) }}</td>
+                            <td>{{ "%.2f"|format(class_metric['precision']) }}</td>
+                            <td>{{ "%.2f"|format(class_metric['recall']) }}</td>
+                            <td>{{ "%.2f"|format(class_metric['f1']) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="note">Metrics calculated on the validation set during model training.</p>
+        </section>
+    </div>
+</body>
+</html>

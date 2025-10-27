@@ -3,65 +3,264 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Disaster Damage Assessment</title>
+    <title>AI Disaster Damage Assessment</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+    <header class="app-header">
+        <div class="header-content">
+            <div class="header-title">
+                <h1>Post-Disaster Damage Assessment System</h1>
+                <p class="header-subtitle">AI-Powered Remote Sensing Analysis</p>
+            </div>
+            <nav><a href="{{ url_for('evaluation') }}" class="nav-link">View Model Evaluation</a></nav>
+            </div>
+    </header>
+    
     <div class="container">
-        <h1>Post-Disaster Damage Assessment</h1>
-        <form method="post" enctype="multipart/form-data">
-            <div class="form-group">
-                <label for="pre_image">Pre-disaster Image</label>
-                <input type="file" id="pre_image" name="pre_image" required>
+        <section class="upload-section card">
+            <div class="section-header">
+                <h2>Upload Satellite Imagery</h2>
+                <p class="section-description">Upload pre-disaster and post-disaster images for automated damage assessment</p>
             </div>
-            <div class="form-group">
-                <label for="post_image">Post-disaster Image</label>
-                <input type="file" id="post_image" name="post_image" required>
-            </div>
-            <button type="submit">Assess Damage</button>
-        </form>
+            
+            <form method="post" enctype="multipart/form-data">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="pre_image">Pre-disaster Image</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="pre_image" name="pre_image" accept="image/*" required>
+                        </div>
+                        <small class="helper-text">Baseline imagery before the disaster event</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="post_image">Post-disaster Image</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="post_image" name="post_image" accept="image/*" required>
+                        </div>
+                        <small class="helper-text">Imagery captured after the disaster event</small>
+                    </div>
+                    
+                    <div class="form-group gsd-group">
+                        <label for="gsd">Ground Sample Distance (m/pixel)</label>
+                        <input type="number" id="gsd" name="gsd" step="0.01" min="0.01" value="{{ gsd_used | default(0.5) }}" required>
+                        <small class="helper-text">Spatial resolution for area calculations</small>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <span class="btn-text">Run Assessment</span>
+                    </button>
+                </div>
+            </form>
+        </section>
 
-        {% if output_image %}
-        <div class="results">
-            <h2>Results</h2>
+        {% if output_image_rel_path %}
+        <section class="results-section card">
+            <div class="section-header">
+                <h2>Assessment Results</h2>
+                <div class="status-badge">Analysis Complete</div>
+            </div>
+            
             <div class="image-grid">
                 <div class="image-container">
-                    <h3>Pre-disaster</h3>
-                    <img src="{{ pre_image }}" alt="Pre-disaster Image">
+                    <div class="image-header">
+                        <h3>Pre-disaster</h3>
+                    </div>
+                    <div class="image-wrapper">
+                        <img src="{{ pre_image_rel_path }}" alt="Pre-disaster Image">
+                    </div>
                 </div>
+                
                 <div class="image-container">
-                    <h3>Post-disaster</h3>
-                    <img src="{{ post_image }}" alt="Post-disaster Image">
+                    <div class="image-header">
+                        <h3>Post-disaster</h3>
+                    </div>
+                    <div class="image-wrapper">
+                        <img src="{{ post_image_rel_path }}" alt="Post-disaster Image">
+                    </div>
                 </div>
+                
                 <div class="image-container">
-                    <h3>Damage Assessment</h3>
-                    <img src="{{ output_image }}" alt="Output Image">
+                    <div class="image-header">
+                        <h3>Damage Segmentation</h3>
+                    </div>
+                    <div class="image-wrapper">
+                        <img src="{{ output_image_rel_path }}" alt="Segmented Damage Map">
+                    </div>
                 </div>
             </div>
-            <div class="chart-container">
-                <h2>Damage Analysis</h2>
-                <canvas id="damageChart"></canvas>
+            
+            <div class="analysis-grid">
+                <div class="analysis-item chart-item">
+                    <h3 class="chart-title">Damage Distribution by Percentage</h3>
+                    <div class="chart-container">
+                        <canvas id="damagePieChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="analysis-item table-item">
+                    <h3 class="table-title">Estimated Damage Area</h3>
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Damage Level</th>
+                                    <th>Area (m²)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category, area in damage_analysis_area_dict.items() %} 
+                                <tr>
+                                    <td>{{ category }}</td>
+                                    <td>{{ "%.2f"|format(area) }}</td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="total-row">
+                                    <td>Total Damaged Area</td>
+                                    <td>{{ "%.2f"|format(total_damaged_area) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="table-footer">
+                        <small>Based on GSD: {{ gsd_used }} m/pixel</small>
+                    </div>
+                </div>
+                
+                <div class="analysis-item chart-item">
+                    <h3 class="chart-title">Area Distribution by Damage Level</h3>
+                    <div class="chart-container">
+                        <canvas id="damageBarChart"></canvas>
+                    </div>
+                </div>
             </div>
-        </div>
+        </section>
         {% endif %}
     </div>
 
-    {% if damage_analysis %}
+    {% if damage_analysis_percent_json and damage_analysis_area_json %} 
     <script>
-        const damageData = {{ damage_analysis|safe }};
-        const labels = Object.keys(damageData);
-        const data = Object.values(damageData);
-        const backgroundColors = labels.map(label => {
-            if (label === 'No Damage/BG') return 'rgba(0, 0, 0, 0.6)';
-            if (label === 'Minor Damage') return 'rgba(0, 0, 255, 0.6)';
-            if (label === 'Moderate Damage') return 'rgba(255, 255, 0, 0.6)';
-            if (label === 'Major Damage') return 'rgba(255, 165, 0, 0.6)';
-            if (label === 'Destroyed') return 'rgba(255, 0, 0, 0.6)';
-            return 'rgba(128, 128, 128, 0.6)';
-        });
-        const ctx = document.getElementById('damageChart').getContext('2d');
-        new Chart(ctx, {type: 'pie', data: {labels: labels, datasets: [{label: 'Damage Distribution (%)', data: data, backgroundColor: backgroundColors, borderWidth: 1}]}});
+        try {
+            const damagePercentData = JSON.parse('{{ damage_analysis_percent_json | safe }}');
+            const damageAreaData = JSON.parse('{{ damage_analysis_area_json | safe }}'); 
+
+            const labels = Object.keys(damagePercentData);
+            const percentValues = Object.values(damagePercentData);
+            const areaValues = labels.map(label => damageAreaData[label] || 0); 
+
+            const colorMap = {
+                'No Damage/BG': 'rgba(148, 163, 184, 0.8)',
+                'Minor Damage': 'rgba(59, 130, 246, 0.8)',
+                'Moderate Damage': 'rgba(251, 191, 36, 0.8)',
+                'Major Damage': 'rgba(249, 115, 22, 0.8)',
+                'Destroyed': 'rgba(239, 68, 68, 0.8)'
+            };
+            
+            const backgroundColors = labels.map(label => colorMap[label] || 'rgba(148, 163, 184, 0.8)');
+            const borderColors = labels.map(label => {
+                const color = colorMap[label] || 'rgba(148, 163, 184, 0.8)';
+                return color.replace('0.8', '1');
+            });
+
+            // Pie Chart Configuration
+            const pieCtx = document.getElementById('damagePieChart').getContext('2d');
+            new Chart(pieCtx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: percentValues,
+                        backgroundColor: backgroundColors,
+                        borderColor: '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 15,
+                                font: {
+                                    size: 12,
+                                    family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': ' + context.parsed.toFixed(2) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Bar Chart Configuration
+            const barCtx = document.getElementById('damageBarChart').getContext('2d');
+            new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Area (m²)',
+                        data: areaValues,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Area (m²)',
+                                font: {
+                                    size: 13,
+                                    weight: '600'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.parsed.x.toFixed(2) + ' m²';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        
+        } catch (e) {
+            console.error("Error rendering charts:", e);
+        }
     </script>
     {% endif %}
 </body>
