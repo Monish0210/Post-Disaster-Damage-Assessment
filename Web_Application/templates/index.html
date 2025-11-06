@@ -19,10 +19,11 @@
     </header>
     
     <div class="container">
+        <!-- Upload Section -->
         <section class="upload-section card">
             <div class="section-header">
                 <h2>Upload Satellite Imagery</h2>
-                <p class="section-description">Upload pre-disaster and post-disaster images for automated damage assessment</p>
+                <p class="section-description">Upload pre- and post-disaster images for automated AI-based damage analysis</p>
             </div>
             
             <form method="post" enctype="multipart/form-data">
@@ -32,7 +33,7 @@
                         <div class="file-input-wrapper">
                             <input type="file" id="pre_image" name="pre_image" accept="image/*" required>
                         </div>
-                        <small class="helper-text">Baseline imagery before the disaster event</small>
+                        <small class="helper-text">Upload image taken before the disaster</small>
                     </div>
                     
                     <div class="form-group">
@@ -40,13 +41,13 @@
                         <div class="file-input-wrapper">
                             <input type="file" id="post_image" name="post_image" accept="image/*" required>
                         </div>
-                        <small class="helper-text">Imagery captured after the disaster event</small>
+                        <small class="helper-text">Upload image taken after the disaster</small>
                     </div>
                     
                     <div class="form-group gsd-group">
                         <label for="gsd">Ground Sample Distance (m/pixel)</label>
                         <input type="number" id="gsd" name="gsd" step="0.01" min="0.01" value="{{ gsd_used | default(0.5) }}" required>
-                        <small class="helper-text">Spatial resolution for area calculations</small>
+                        <small class="helper-text">Used for accurate area estimation</small>
                     </div>
                 </div>
                 
@@ -58,42 +59,44 @@
             </form>
         </section>
 
+        <!-- Results Section -->
         {% if output_image_rel_path %}
         <section class="results-section card">
             <div class="section-header">
                 <h2>Assessment Results</h2>
-                <div class="status-badge">Analysis Complete</div>
+                <div class="status-badge">✅ Analysis Complete</div>
             </div>
             
             <div class="image-grid">
+                {% if pre_image_rel_path %}
                 <div class="image-container">
-                    <div class="image-header">
-                        <h3>Pre-disaster</h3>
-                    </div>
+                    <div class="image-header"><h3>Pre-disaster</h3></div>
                     <div class="image-wrapper">
-                        <img src="{{ pre_image_rel_path }}" alt="Pre-disaster Image">
+                        <img src="{{ pre_image_rel_path }}" alt="Pre-disaster Image" onerror="this.src='https://via.placeholder.com/256?text=No+Image';">
                     </div>
                 </div>
-                
+                {% endif %}
+
+                {% if post_image_rel_path %}
                 <div class="image-container">
-                    <div class="image-header">
-                        <h3>Post-disaster</h3>
-                    </div>
+                    <div class="image-header"><h3>Post-disaster</h3></div>
                     <div class="image-wrapper">
-                        <img src="{{ post_image_rel_path }}" alt="Post-disaster Image">
+                        <img src="{{ post_image_rel_path }}" alt="Post-disaster Image" onerror="this.src='https://via.placeholder.com/256?text=No+Image';">
                     </div>
                 </div>
-                
+                {% endif %}
+
+                {% if output_image_rel_path %}
                 <div class="image-container">
-                    <div class="image-header">
-                        <h3>Damage Segmentation</h3>
-                    </div>
+                    <div class="image-header"><h3>Damage Segmentation</h3></div>
                     <div class="image-wrapper">
-                        <img src="{{ output_image_rel_path }}" alt="Segmented Damage Map">
+                        <img src="{{ output_image_rel_path }}" alt="Damage Segmentation Map" onerror="this.src='https://via.placeholder.com/256?text=No+Result';">
                     </div>
                 </div>
+                {% endif %}
             </div>
             
+            <!-- Analysis Results -->
             <div class="analysis-grid">
                 <div class="analysis-item chart-item">
                     <h3 class="chart-title">Damage Distribution by Percentage</h3>
@@ -113,15 +116,15 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for category, area in damage_analysis_area_dict.items() %} 
+                                {% for category, area in damage_analysis_area_dict.items() %}
                                 <tr>
                                     <td>{{ category }}</td>
                                     <td>{{ "%.2f"|format(area) }}</td>
                                 </tr>
                                 {% endfor %}
                                 <tr class="total-row">
-                                    <td>Total Damaged Area</td>
-                                    <td>{{ "%.2f"|format(total_damaged_area) }}</td>
+                                    <td><strong>Total Damaged Area</strong></td>
+                                    <td><strong>{{ "%.2f"|format(total_damaged_area) }}</strong></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -130,7 +133,7 @@
                         <small>Based on GSD: {{ gsd_used }} m/pixel</small>
                     </div>
                 </div>
-                
+
                 <div class="analysis-item chart-item">
                     <h3 class="chart-title">Area Distribution by Damage Level</h3>
                     <div class="chart-container">
@@ -142,93 +145,54 @@
         {% endif %}
     </div>
 
-    {% if damage_analysis_percent_json and damage_analysis_area_json %} 
+    {% if damage_analysis_percent_json and damage_analysis_area_json %}
     <script>
         try {
             const damagePercentData = JSON.parse('{{ damage_analysis_percent_json | safe }}');
-            const damageAreaData = JSON.parse('{{ damage_analysis_area_json | safe }}'); 
+            const damageAreaData = JSON.parse('{{ damage_analysis_area_json | safe }}');
 
             const labels = Object.keys(damagePercentData);
             const percentValues = Object.values(damagePercentData);
-            const areaValues = labels.map(label => damageAreaData[label] || 0); 
+            const areaValues = labels.map(label => damageAreaData[label] || 0);
 
-            
             const colorMap = {
-                'Background': 'rgba(0, 0, 0, 0.8)',         // Black
-                'No Damage': 'rgba(0, 255, 0, 0.8)',       // Green
-                'Minor Damage': 'rgba(255, 165, 0, 0.8)',   // Orange
-                'Major Damage': 'rgba(128, 0, 128, 0.8)',   // Purple
-                'Destroyed': 'rgba(255, 0, 0, 0.8)'         // Red
+                'Background': 'rgba(0, 0, 0, 0.8)',
+                'No Damage': 'rgba(0, 255, 0, 0.8)',
+                'Minor Damage': 'rgba(255, 165, 0, 0.8)',
+                'Major Damage': 'rgba(128, 0, 128, 0.8)',
+                'Destroyed': 'rgba(255, 0, 0, 0.8)'
             };
-            
-            const backgroundColors = labels.map(label => colorMap[label] || 'rgba(148, 163, 184, 0.8)');
+            const backgroundColors = labels.map(label => colorMap[label] || 'rgba(148,163,184,0.8)');
             const borderColors = backgroundColors.map(color => color.replace('0.8', '1'));
 
-            // Pie Chart Configuration
+            // Pie Chart
             const pieCtx = document.getElementById('damagePieChart').getContext('2d');
             new Chart(pieCtx, {
                 type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: percentValues,
-                        backgroundColor: backgroundColors,
-                        borderColor: '#ffffff',
-                        borderWidth: 2
-                    }]
-                },
+                data: { labels, datasets: [{ data: percentValues, backgroundColor: backgroundColors, borderColor: '#fff', borderWidth: 2 }] },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { padding: 15, font: { size: 12 }}
-                        },
-                        tooltip: {
-                            callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed.toFixed(2)}%` }
-                        }
+                        legend: { position: 'bottom', labels: { padding: 15, font: { size: 12 } } },
+                        tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed.toFixed(2)}%` } }
                     }
                 }
             });
 
-            // Bar Chart Configuration
+            // Bar Chart
             const barCtx = document.getElementById('damageBarChart').getContext('2d');
             new Chart(barCtx, {
                 type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Area (m²)',
-                        data: areaValues,
-                        backgroundColor: backgroundColors,
-                        borderColor: borderColors,
-                        borderWidth: 1
-                    }]
-                },
+                data: { labels, datasets: [{ label: 'Area (m²)', data: areaValues, backgroundColor: backgroundColors, borderColor: borderColors, borderWidth: 1 }] },
                 options: {
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            beginAtZero: true,
-                            title: { display: true, text: 'Area (m²)', font: { size: 13, weight: '600' }},
-                            grid: { color: 'rgba(0, 0, 0, 0.05)' }
-                        },
-                        y: {
-                            grid: { display: false }
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: { label: ctx => `${ctx.parsed.x.toFixed(2)} m²` }
-                        }
-                    }
+                    scales: { x: { beginAtZero: true, title: { display: true, text: 'Area (m²)' } }, y: { grid: { display: false } } },
+                    plugins: { legend: { display: false } }
                 }
             });
-        
         } catch (e) {
             console.error("Error rendering charts:", e);
         }

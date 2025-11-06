@@ -3,3 +3,5 @@ torch
 torchvision
 Pillow
 gunicorn
+cloudinary
+requests
