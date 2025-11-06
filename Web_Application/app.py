@@ -7,10 +7,13 @@ from model import SiamUnet
 import json
 import uuid
 import numpy as np
+import sys
+
+sys.modules['__main__'] = sys.modules['model']
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['MODEL_PATH'] = 'siamUnet.pt'
+app.config['MODEL_PATH'] = os.path.join(os.path.dirname(__file__), 'siamUnet.pt')
 app.config['DEFAULT_GSD'] = 0.5
 app.config['ORIGINAL_IMAGE_SIZE'] = 1024
 app.config['MODEL_IMAGE_SIZE'] = 256
