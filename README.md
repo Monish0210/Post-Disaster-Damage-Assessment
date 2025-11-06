@@ -105,8 +105,6 @@ To get a local copy up and running, follow these simple steps.
     ├── model.py
     ├── siamUnet.pt
     ├── requirements.txt
-    ├── Procfile
-    ├── runtime.txt
     ├── static/
     │   ├── css/
     │   │   └── style.css
