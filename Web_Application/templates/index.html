@@ -15,7 +15,7 @@
                 <p class="header-subtitle">AI-Powered Remote Sensing Analysis</p>
             </div>
             <nav><a href="{{ url_for('evaluation') }}" class="nav-link">View Model Evaluation</a></nav>
-            </div>
+        </div>
     </header>
     
     <div class="container">
@@ -152,19 +152,17 @@
             const percentValues = Object.values(damagePercentData);
             const areaValues = labels.map(label => damageAreaData[label] || 0); 
 
+            
             const colorMap = {
-                'No Damage/BG': 'rgba(148, 163, 184, 0.8)',
-                'Minor Damage': 'rgba(59, 130, 246, 0.8)',
-                'Moderate Damage': 'rgba(251, 191, 36, 0.8)',
-                'Major Damage': 'rgba(249, 115, 22, 0.8)',
-                'Destroyed': 'rgba(239, 68, 68, 0.8)'
+                'Background': 'rgba(0, 0, 0, 0.8)',         // Black
+                'No Damage': 'rgba(0, 255, 0, 0.8)',       // Green
+                'Minor Damage': 'rgba(255, 165, 0, 0.8)',   // Orange
+                'Major Damage': 'rgba(128, 0, 128, 0.8)',   // Purple
+                'Destroyed': 'rgba(255, 0, 0, 0.8)'         // Red
             };
             
             const backgroundColors = labels.map(label => colorMap[label] || 'rgba(148, 163, 184, 0.8)');
-            const borderColors = labels.map(label => {
-                const color = colorMap[label] || 'rgba(148, 163, 184, 0.8)';
-                return color.replace('0.8', '1');
-            });
+            const borderColors = backgroundColors.map(color => color.replace('0.8', '1'));
 
             // Pie Chart Configuration
             const pieCtx = document.getElementById('damagePieChart').getContext('2d');
@@ -185,20 +183,10 @@
                     plugins: {
                         legend: {
                             position: 'bottom',
-                            labels: {
-                                padding: 15,
-                                font: {
-                                    size: 12,
-                                    family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-                                }
-                            }
+                            labels: { padding: 15, font: { size: 12 }}
                         },
                         tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return context.label + ': ' + context.parsed.toFixed(2) + '%';
-                                }
-                            }
+                            callbacks: { label: ctx => `${ctx.label}: ${ctx.parsed.toFixed(2)}%` }
                         }
                     }
                 }
@@ -225,34 +213,17 @@
                     scales: {
                         x: {
                             beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Area (m²)',
-                                font: {
-                                    size: 13,
-                                    weight: '600'
-                                }
-                            },
-                            grid: {
-                                color: 'rgba(0, 0, 0, 0.05)'
-                            }
+                            title: { display: true, text: 'Area (m²)', font: { size: 13, weight: '600' }},
+                            grid: { color: 'rgba(0, 0, 0, 0.05)' }
                         },
                         y: {
-                            grid: {
-                                display: false
-                            }
+                            grid: { display: false }
                         }
                     },
                     plugins: {
-                        legend: {
-                            display: false
-                        },
+                        legend: { display: false },
                         tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    return context.parsed.x.toFixed(2) + ' m²';
-                                }
-                            }
+                            callbacks: { label: ctx => `${ctx.parsed.x.toFixed(2)} m²` }
                         }
                     }
                 }

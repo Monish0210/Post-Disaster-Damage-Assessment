@@ -6,19 +6,17 @@ from torchvision import transforms
 from model import SiamUnet
 import json
 import uuid
-import numpy as np 
+import numpy as np
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MODEL_PATH'] = 'siamUnet.pt'
 app.config['DEFAULT_GSD'] = 0.5
-app.config['ORIGINAL_IMAGE_SIZE'] = 1024 
+app.config['ORIGINAL_IMAGE_SIZE'] = 1024
 app.config['MODEL_IMAGE_SIZE'] = 256
-
 
 model = None
 device = torch.device('cpu')
-
 
 transform = transforms.Compose([
     transforms.Resize((app.config['MODEL_IMAGE_SIZE'], app.config['MODEL_IMAGE_SIZE'])),
@@ -26,8 +24,21 @@ transform = transforms.Compose([
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
-DAMAGE_CLASSES = {0: 'No Damage/BG', 1: 'Minor Damage', 2: 'Moderate Damage', 3: 'Major Damage', 4: 'Destroyed'}
-CLASS_COLORS_RGB = [(0,0,0), (0,0,255), (255,255,0), (255,165,0), (255,0,0)] # RGB for PIL
+DAMAGE_CLASSES = {
+    0: 'Background',
+    1: 'No Damage',
+    2: 'Minor Damage',
+    3: 'Major Damage',
+    4: 'Destroyed'
+}
+CLASS_COLORS_RGB = [
+    (0, 0, 0),       # 0: Background (Black)
+    (0, 255, 0),     # 1: No Damage (Green)
+    (255, 165, 0),   # 2: Minor Damage (Orange)
+    (128, 0, 128),   # 3: Major Damage (Purple)
+    (255, 0, 0)      # 4: Destroyed (Red)
+]
+
 
 def load_model_if_needed():
     global model
@@ -45,7 +56,7 @@ def load_model_if_needed():
 
 @app.before_request
 def before_request():
-    load_model_if_needed() 
+    load_model_if_needed()
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -69,9 +80,7 @@ def index():
             
         
         original_area_per_pixel = gsd * gsd
-        
         scale_factor_squared = (app.config['ORIGINAL_IMAGE_SIZE'] / app.config['MODEL_IMAGE_SIZE']) ** 2
-        
         area_per_predicted_pixel = scale_factor_squared * original_area_per_pixel
         
 
@@ -98,25 +107,23 @@ def index():
             # --- Analysis Calculation ---
             preds_cls_np = preds_cls_tensor.cpu().numpy().flatten() 
             unique_classes, counts = np.unique(preds_cls_np, return_counts=True)
-            total_predicted_pixels = preds_cls_np.size # Total pixels in the 256x256 mask
+            total_predicted_pixels = preds_cls_np.size
             
             damage_analysis_percent, damage_analysis_area = {}, {}
             total_damaged_area = 0.0
 
             for i, count in zip(unique_classes, counts):
                 class_name = DAMAGE_CLASSES.get(i, "Unknown")
-                
                 percentage = (count / total_predicted_pixels) * 100
-                
                 area_m2 = count * area_per_predicted_pixel 
                 
                 damage_analysis_percent[class_name] = percentage
                 damage_analysis_area[class_name] = area_m2 
 
-                if i > 0: 
+                if i > 0: # Assumes class 0 is 'Background' and non-damage
                     total_damaged_area += area_m2
             
-           
+          
             colors = torch.tensor(CLASS_COLORS_RGB, dtype=torch.uint8)
             output_image_tensor = colors[preds_cls_tensor.squeeze(0).cpu().long()].permute(2, 0, 1)
             output_image = transforms.ToPILImage()(output_image_tensor)
@@ -127,48 +134,40 @@ def index():
                                    pre_image_rel_path=url_for('static', filename=f'uploads/{pre_filename}'),
                                    post_image_rel_path=url_for('static', filename=f'uploads/{post_filename}'),
                                    output_image_rel_path=url_for('static', filename=f'uploads/{output_filename}'),
-                                   
                                    damage_analysis_percent_json=json.dumps(damage_analysis_percent),
                                    damage_analysis_area_json=json.dumps(damage_analysis_area),
-                                   
                                    damage_analysis_area_dict=damage_analysis_area, 
                                    total_damaged_area=total_damaged_area,
                                    gsd_used=gsd)
         except Exception as e:
             print(f"Error during prediction: {e}")
-            
             if os.path.exists(pre_image_path): os.remove(pre_image_path)
             if os.path.exists(post_image_path): os.remove(post_image_path)
             if 'output_image_path' in locals() and os.path.exists(output_image_path): os.remove(output_image_path)
             return f"An error occurred during processing: {e}", 500
 
-    
-    return render_template('index.html', gsd_used=app.config['DEFAULT_GSD'])
+    return render_template('index.html', gsd_used=app.config['DEFAULT_GSD']) 
 
 
 @app.route('/evaluation')
 def evaluation():
     metrics = {
-        "Overall Pixel Accuracy": 98.79, 
-        "Mean IoU (mIoU)": 14.89,         
-        "Macro Average Precision": 25.05, 
-        "Macro Average Recall": 18.98,    
-        "Macro Average F1-Score": 19.34,  
+        "Overall Pixel Accuracy": 96.61, 
+        "Mean IoU (mIoU)": 49.69,         
+        "Macro Average Precision": 65.97, 
+        "Macro Average Recall": 58.97,    
+        "Macro Average F1-Score": 61.81, 
         "class_metrics": [
-            {"name": "No Damage/BG", "iou": 98.78, "precision": 99.98, "recall": 98.80, "f1": 99.38}, # Example values
-            {"name": "Minor Damage", "iou": 0.00, "precision": 0.00, "recall": 0.00, "f1": 0.00},     # Example values
-            {"name": "Moderate Damage", "iou": 0.00, "precision": 0.00, "recall": 0.00, "f1": 0.00},  # Example values
-            {"name": "Major Damage", "iou": 0.00, "precision": 0.00, "recall": 0.00, "f1": 0.00},     # Example values
-            {"name": "Destroyed", "iou": 0.00, "precision": 0.00, "recall": 0.00, "f1": 0.00}      # Example values
+            {"name": "Background", "iou": 96.87, "precision": 98.67, "recall": 98.16, "f1": 98.41},  # Example
+            {"name": "No Damage", "iou": 57.95, "precision": 67.49, "recall": 80.38, "f1": 73.38},   # Example
+            {"name": "Minor Damage", "iou": 7.90, "precision": 32.12, "recall": 9.48, "f1": 9.48},  # Example
+            {"name": "Major Damage", "iou": 38.62, "precision": 63.28, "recall": 49.77, "f1": 55.72},  # Example
+            {"name": "Destroyed", "iou": 38.27, "precision": 53.01, "recall": 57.93, "f1": 55.36}      # Example
         ]
     }
-    
     return render_template('evaluation.html', metrics=metrics)
 
-
 if __name__ == '__main__':
-    
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
         os.makedirs(app.config['UPLOAD_FOLDER'])
-    
     app.run(debug=True)
